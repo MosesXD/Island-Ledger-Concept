@@ -1,7 +1,7 @@
 const STORAGE_KEY="island-ledger-transactions-v1";
 const SETTINGS_KEY="island-ledger-settings-v1";
 const CURRENCIES=[
-["TTD","🇹🇹","Trinidad and Tobago Dollar"],["XCD","🌎","Eastern Caribbean Dollar"],["BBD","🇧🇧","Barbadian Dollar"],["JMD","🇯🇲","Jamaican Dollar"],["BSD","🇧🇸","Bahamian Dollar"],["BZD","🇧🇿","Belize Dollar"],["GYD","🇬🇾","Guyanese Dollar"],["SRD","🇸🇷","Surinamese Dollar"],["HTG","🇭🇹","Haitian Gourde"],["DOP","🇩🇴","Dominican Peso"],["CUP","🇨🇺","Cuban Peso"],["AWG","🇦🇼","Aruban Florin"],["ANG","🇨🇼","Netherlands Antillean Guilder"],["KYD","🇰🇾","Cayman Islands Dollar"],["USD","🇺🇸","US Dollar"],["EUR","🇪🇺","Euro"],["GBP","🇬🇧","British Pound"],["CAD","🇨🇦","Canadian Dollar"]];
+["TTD","🇹🇹","Trinidad and Tobago Dollar"],["XCD","🌎","Eastern Caribbean Dollar"],["BBD","🇧🇧","Barbadian Dollar"],["JMD","🇯🇲","Jamaican Dollar"],["BSD","🇧🇸","Bahamian Dollar"],["BZD","🇧🇿","Belize Dollar"],["GYD","🇬🇾","Guyanese Dollar"],["SRD","🇸🇷","Surinamese Dollar"],["HTG","🇭🇹","Haitian Gourde"],["DOP","🇩🇴","Dominican Peso"],["CUP","🇨🇺","Cuban Peso"],["AWG","🇦🇼","Aruban Florin"],["XCG","🇨🇼","Caribbean Guilder"],["KYD","🇰🇾","Cayman Islands Dollar"],["BMD","🇧🇲","Bermudian Dollar"],["USD","🇺🇸","US Dollar"],["EUR","🇪🇺","Euro"],["GBP","🇬🇧","British Pound"],["CAD","🇨🇦","Canadian Dollar"]];
 const currencyMap=Object.fromEntries(CURRENCIES.map(([code,flag,name])=>[code,{flag,name}]));
 const $=selector=>document.querySelector(selector);
 const form=$("#transaction-form"),list=$("#transaction-list"),message=$("#form-message"),dateInput=$("#date");
