@@ -1,109 +1,25 @@
-const STORAGE_KEY = "island-ledger-transactions-v1";
-const money = new Intl.NumberFormat("en-TT", { style: "currency", currency: "TTD" });
-const form = document.querySelector("#transaction-form");
-const list = document.querySelector("#transaction-list");
-const message = document.querySelector("#form-message");
-const dateInput = document.querySelector("#date");
-
-dateInput.value = new Date().toISOString().slice(0, 10);
-document.querySelector("#footer-year").textContent = new Date().getFullYear();
-document.querySelector("#month-label").textContent = new Date().toLocaleDateString("en-TT", { month: "long", year: "numeric" });
-
-function loadTransactions() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-    return Array.isArray(saved) ? saved : [];
-  } catch {
-    return [];
-  }
-}
-let transactions = loadTransactions();
-
-function saveTransactions() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions));
-}
-function escapeHTML(value) {
-  return String(value).replace(/[&<>"']/g, char => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-  })[char]);
-}
-function render() {
-  const income = transactions.filter(t => t.type === "income").reduce((sum, t) => sum + t.amount, 0);
-  const expenses = transactions.filter(t => t.type === "expense").reduce((sum, t) => sum + t.amount, 0);
-  document.querySelector("#balance-total").textContent = money.format(income - expenses);
-  document.querySelector("#income-total").textContent = money.format(income);
-  document.querySelector("#expense-total").textContent = money.format(expenses);
-
-  const sorted = [...transactions].sort((a, b) => b.date.localeCompare(a.date));
-  if (!sorted.length) {
-    list.innerHTML = '<tr><td colspan="5" class="empty-note">No transactions yet. Add one above to get started.</td></tr>';
-  } else {
-    list.innerHTML = sorted.map(t => `
-      <tr>
-        <td><strong>${escapeHTML(t.description)}</strong></td>
-        <td><span class="category-pill">${escapeHTML(t.category)}</span></td>
-        <td>${escapeHTML(t.date)}</td>
-        <td class="align-right ${t.type === "income" ? "amount-income" : "amount-expense"}">${t.type === "income" ? "+" : "−"}${money.format(t.amount)}</td>
-        <td><button class="delete-button" type="button" data-delete="${t.id}" aria-label="Delete ${escapeHTML(t.description)}">×</button></td>
-      </tr>`).join("");
-  }
-  renderSpending();
-}
-function renderSpending() {
-  const expenses = transactions.filter(t => t.type === "expense");
-  const totals = {};
-  expenses.forEach(t => { totals[t.category] = (totals[t.category] || 0) + t.amount; });
-  const entries = Object.entries(totals).sort((a, b) => b[1] - a[1]);
-  const container = document.querySelector("#spending-bars");
-  if (!entries.length) {
-    container.innerHTML = '<p class="empty-note">Add a few expenses to see your category breakdown.</p>';
-    return;
-  }
-  const max = entries[0][1] || 1;
-  container.innerHTML = entries.slice(0, 5).map(([category, amount]) => `
-    <div class="bar-row">
-      <div class="bar-label"><span>${escapeHTML(category)}</span><span>${money.format(amount)}</span></div>
-      <div class="bar-track"><div class="bar-fill" style="width:${Math.max(3, amount / max * 100)}%"></div></div>
-    </div>`).join("");
-}
-form.addEventListener("submit", event => {
-  event.preventDefault();
-  const data = new FormData(form);
-  const amount = Number(data.get("amount"));
-  const description = String(data.get("description")).trim();
-  if (!description || !Number.isFinite(amount) || amount <= 0) {
-    message.textContent = "Enter a description and an amount greater than zero.";
-    return;
-  }
-  transactions.push({
-    id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random())),
-    description,
-    amount: Math.round(amount * 100) / 100,
-    type: data.get("type"),
-    category: data.get("category"),
-    date: data.get("date")
-  });
-  saveTransactions();
-  render();
-  form.reset();
-  dateInput.value = new Date().toISOString().slice(0, 10);
-  message.textContent = "Transaction added. Nice one!";
-});
-list.addEventListener("click", event => {
-  const button = event.target.closest("[data-delete]");
-  if (!button) return;
-  transactions = transactions.filter(t => t.id !== button.dataset.delete);
-  saveTransactions();
-  render();
-  message.textContent = "Transaction removed.";
-});
-document.querySelector("#clear-demo").addEventListener("click", () => {
-  if (!transactions.length) return;
-  if (confirm("Clear all transactions saved in this browser? This cannot be undone.")) {
-    transactions = [];
-    saveTransactions();
-    render();
-    message.textContent = "Browser demo data cleared.";
-  }
-});
-render();
+const STORAGE_KEY="island-ledger-transactions-v1";
+const SETTINGS_KEY="island-ledger-settings-v1";
+const CURRENCIES=[
+["TTD","🇹🇹","Trinidad and Tobago Dollar"],["XCD","🌎","Eastern Caribbean Dollar"],["BBD","🇧🇧","Barbadian Dollar"],["JMD","🇯🇲","Jamaican Dollar"],["BSD","🇧🇸","Bahamian Dollar"],["BZD","🇧🇿","Belize Dollar"],["GYD","🇬🇾","Guyanese Dollar"],["SRD","🇸🇷","Surinamese Dollar"],["HTG","🇭🇹","Haitian Gourde"],["DOP","🇩🇴","Dominican Peso"],["CUP","🇨🇺","Cuban Peso"],["AWG","🇦🇼","Aruban Florin"],["ANG","🇨🇼","Netherlands Antillean Guilder"],["KYD","🇰🇾","Cayman Islands Dollar"],["USD","🇺🇸","US Dollar"],["EUR","🇪🇺","Euro"],["GBP","🇬🇧","British Pound"],["CAD","🇨🇦","Canadian Dollar"]];
+const currencyMap=Object.fromEntries(CURRENCIES.map(([code,flag,name])=>[code,{flag,name}]));
+const $=selector=>document.querySelector(selector);
+const form=$("#transaction-form"),list=$("#transaction-list"),message=$("#form-message"),dateInput=$("#date");
+let transactions=loadTransactions(),settings=loadSettings(),rates=null,rateUpdated=null;
+function loadTransactions(){try{const data=JSON.parse(localStorage.getItem(STORAGE_KEY)||"[]");return Array.isArray(data)?data.filter(t=>t&&typeof t.description==="string"&&Number.isFinite(Number(t.amount))).map(t=>({...t,amount:Number(t.amount),currency:t.currency||"TTD"})):[]}catch{return[]}}
+function loadSettings(){try{return{displayCurrency:"TTD",...JSON.parse(localStorage.getItem(SETTINGS_KEY)||"{}")}}catch{return{displayCurrency:"TTD"}}}
+function saveTransactions(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(transactions))}catch{message.textContent="Browser storage is unavailable; changes may not persist."}}
+function saveSettings(){try{localStorage.setItem(SETTINGS_KEY,JSON.stringify(settings))}catch{}}
+function escapeHTML(value){return String(value).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function formatMoney(amount,code=settings.displayCurrency){try{return new Intl.NumberFormat(undefined,{style:"currency",currency:code}).format(amount)}catch{return code+" "+Number(amount).toFixed(2)}}
+function currencyOptions(selected){return CURRENCIES.map(([code,flag,name])=>'<option value="'+code+'" '+(code===selected?"selected":"")+'>'+flag+' '+code+' · '+name+'</option>').join("")}
+function convert(amount,from,to){if(from===to)return amount;if(!rates||!rates[from]||!rates[to])return null;return amount/rates[from]*rates[to]}
+function amountInDisplay(t){return convert(t.amount,t.currency||"TTD",settings.displayCurrency)}
+async function loadRates(){const note=$("#rate-note");try{note.textContent="Updating exchange rates…";const response=await fetch("https://open.er-api.com/v6/latest/TTD",{cache:"no-store"});if(!response.ok)throw new Error("Rate service unavailable");const data=await response.json();if(data.result!=="success"||!data.rates)throw new Error("Rate data unavailable");rates=data.rates;rateUpdated=data.time_last_update_utc||new Date().toISOString();render();note.textContent="Exchange rates last updated: "+new Date(data.time_last_update_utc||Date.now()).toLocaleString()+" · Indicative rates, not bank quotes."}catch(error){note.textContent="Exchange rates couldn't be loaded. TTD transactions still work; foreign-currency totals need a connection."}}
+function render(){const income=transactions.filter(t=>t.type==="income"),expenses=transactions.filter(t=>t.type==="expense");const sum=items=>items.reduce((total,t)=>{const value=amountInDisplay(t);return total+(value===null?0:value)},0);const hasMissing=transactions.some(t=>amountInDisplay(t)===null);$("#balance-total").textContent=formatMoney(sum(income)-sum(expenses));$("#income-total").textContent=formatMoney(sum(income));$("#expense-total").textContent=formatMoney(sum(expenses));$("#display-currency").value=settings.displayCurrency;$("#display-currency-label").textContent=(currencyMap[settings.displayCurrency]?.flag||"")+" "+settings.displayCurrency;const sorted=[...transactions].sort((a,b)=>String(b.date).localeCompare(String(a.date)));if(!sorted.length){list.innerHTML='<tr><td colspan="5" class="empty-note">No transactions yet. Add one above to get started.</td></tr>'}else{list.innerHTML=sorted.map(t=>{const value=amountInDisplay(t),display=value===null?formatMoney(t.amount,t.currency||"TTD"):formatMoney(value);return '<tr><td><strong>'+escapeHTML(t.description)+'</strong></td><td><span class="category-pill">'+escapeHTML(t.category)+'</span></td><td>'+escapeHTML(t.date)+'</td><td class="align-right '+(t.type==="income"?"amount-income":"amount-expense")+'">'+(t.type==="income"?"+":"−")+display+(t.currency!==settings.displayCurrency&&value!==null?'<small class="original-amount"> · '+formatMoney(t.amount,t.currency)+'</small>':"")+'</td><td><button class="delete-button" type="button" data-delete="'+escapeHTML(t.id)+'" aria-label="Delete '+escapeHTML(t.description)+'">×</button></td></tr>'}).join("")}renderSpending();if(hasMissing&&rates)$("#rate-note").textContent="Some currency rates are unavailable; affected amounts are excluded from converted totals."}
+function renderSpending(){const expenses=transactions.filter(t=>t.type==="expense"),totals={};expenses.forEach(t=>{const amount=amountInDisplay(t);if(amount!==null)totals[t.category]=(totals[t.category]||0)+amount});const entries=Object.entries(totals).sort((a,b)=>b[1]-a[1]),container=$("#spending-bars");if(!entries.length){container.innerHTML='<p class="empty-note">Add a few expenses to see your category breakdown.</p>';return}const max=entries[0][1]||1;container.innerHTML=entries.slice(0,5).map(([category,amount])=>'<div class="bar-row"><div class="bar-label"><span>'+escapeHTML(category)+'</span><span>'+formatMoney(amount)+'</span></div><div class="bar-track"><div class="bar-fill" style="width:'+Math.max(3,amount/max*100)+'%"></div></div></div>').join("")}
+form.addEventListener("submit",event=>{event.preventDefault();const data=new FormData(form),amount=Number(data.get("amount")),description=String(data.get("description")).trim();if(!description||!Number.isFinite(amount)||amount<=0){message.textContent="Enter a description and an amount greater than zero.";return}transactions.push({id:crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random()),description,amount:Math.round(amount*100)/100,type:data.get("type"),category:data.get("category"),date:data.get("date"),currency:data.get("currency")||"TTD"});saveTransactions();render();form.reset();dateInput.value=new Date().toISOString().slice(0,10);$("#transaction-currency").value="TTD";message.textContent="Transaction added. Nice one!"});
+list.addEventListener("click",event=>{const button=event.target.closest("[data-delete]");if(!button)return;transactions=transactions.filter(t=>t.id!==button.dataset.delete);saveTransactions();render();message.textContent="Transaction removed."});
+$("#clear-demo").addEventListener("click",()=>{if(!transactions.length)return;if(confirm("Clear all transactions saved in this browser? This cannot be undone.")){transactions=[];saveTransactions();render();message.textContent="Browser demo data cleared."}});
+$("#display-currency").addEventListener("change",event=>{settings.displayCurrency=event.target.value;saveSettings();render()});
+dateInput.value=new Date().toISOString().slice(0,10);$("#footer-year").textContent=new Date().getFullYear();$("#month-label").textContent=new Date().toLocaleDateString(undefined,{month:"long",year:"numeric"});$("#display-currency").innerHTML=currencyOptions(settings.displayCurrency);$("#transaction-currency").innerHTML=currencyOptions("TTD");$("#display-currency-label").textContent=(currencyMap[settings.displayCurrency]?.flag||"")+" "+settings.displayCurrency;render();loadRates();
