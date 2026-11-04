@@ -21,7 +21,7 @@
           <h1>Small steps.<br><span>Better money habits.</span></h1>
           <p class="intro">A simple place to track your income, spending, and savings goals. This demo saves data only in this browser.</p>
         </div>
-        <div class="month-chip"><span class="dot"></span><span id="month-label">This month</span></div>
+        <div><div class="month-chip"><span class="dot"></span><span id="month-label">This month</span></div><div class="currency-control"><label for="display-currency">DISPLAY CURRENCY</label><select id="display-currency" aria-label="Choose dashboard display currency"></select></div><p id="rate-note" class="rate-note" role="status">Loading exchange rates…</p></div>
       </section>
 
       <section class="summary-grid" aria-label="Money summary">
@@ -45,10 +45,10 @@
             <label for="description">Description</label>
             <input id="description" name="description" maxlength="70" placeholder="e.g. Pay, groceries, bus fare" required>
             <div class="form-row">
-              <div><label for="amount">Amount (TTD)</label><input id="amount" name="amount" type="number" min="0.01" step="0.01" placeholder="0.00" required></div>
+              <div><label for="amount">Amount</label><input id="amount" name="amount" type="number" min="0.01" step="0.01" placeholder="0.00" required></div>
               <div><label for="type">Type</label><select id="type" name="type"><option value="expense">Expense</option><option value="income">Income</option></select></div>
             </div>
-            <label for="category">Category</label>
+            <label for="transaction-currency">Transaction currency</label><select id="transaction-currency" name="currency" aria-label="Currency used for this transaction"></select>\n            <label for="category">Category</label>
             <select id="category" name="category">
               <option>Salary / Work</option><option>Food</option><option>Transport</option><option>Bills</option><option>Home</option><option>Savings</option><option>Fun</option><option>Other</option>
             </select>
