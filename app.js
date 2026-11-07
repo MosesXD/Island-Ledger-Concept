@@ -3,6 +3,7 @@
   const GOAL_KEY = "island-ledger-concept-v1-goals";
   const SETTINGS_KEY = "island-ledger-concept-v1-settings";
   const BUDGET_KEY = "island-ledger-concept-v1-budget-plans";
+  try { if (localStorage.getItem(TX_KEY) === null) { const previous = localStorage.getItem("island-ledger-concept-transactions-v1"); if (previous !== null) localStorage.setItem(TX_KEY, previous); } } catch (error) { console.warn("Could not migrate earlier Concept transactions", error); }
   const CURRENCIES = [
     ["TTD","Trinidad and Tobago Dollar"],["XCD","East Caribbean Dollar"],["BBD","Barbadian Dollar"],
     ["JMD","Jamaican Dollar"],["BSD","Bahamian Dollar"],["BZD","Belize Dollar"],["GYD","Guyanese Dollar"],
